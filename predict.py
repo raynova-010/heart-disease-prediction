@@ -61,6 +61,49 @@ QUESTIONS = [
 ]
 assert sorted(q[0] for q in QUESTIONS) == sorted(FEATURES)
 
+# Plain-language context per question: (short hint shown beside the label, longer explanation).
+CONTEXT = {
+    "age": ("", "Your age in whole years."),
+    "sex": ("", "Sex as recorded in the original study data (male or female)."),
+    "cp": ("the kind you usually have, if any",
+           "Typical angina: pressure or tightness in the chest brought on by exertion or stress "
+           "and relieved by rest. Atypical angina: chest pain with only some of those features. "
+           "Non-anginal: chest pain that doesn't seem heart-related, e.g. sharp pain that changes "
+           "with breathing or when pressing on the chest. Asymptomatic: no chest pain."),
+    "trestbps": ("normal is under 120",
+                 "The top (systolic) number of a blood pressure reading taken at rest, e.g. 120 "
+                 "in '120/80'."),
+    "chol": ("from a blood test; under 200 is desirable",
+             "Total cholesterol from a blood test. If your report shows mmol/L, multiply by 38.67 "
+             "to get mg/dL (e.g. 5.2 mmol/L ≈ 200 mg/dL)."),
+    "fbs": ("from a fasting blood test",
+            "Blood sugar measured after not eating for at least 8 hours. 120 mg/dL is about "
+            "6.7 mmol/L. Choose \"Don't know\" if you haven't had this test."),
+    "restecg": ("from an ECG at rest",
+                "The result of an electrocardiogram (ECG) taken while resting. ST-T wave "
+                "abnormality: changes in part of the heartbeat tracing. Left ventricular "
+                "hypertrophy: signs that the heart's main pumping chamber has a thickened wall."),
+    "thalch": ("from an exercise stress test",
+               "The highest heart rate reached on a treadmill or bike stress test, not your "
+               "everyday resting pulse. A rough expected maximum is 220 minus your age."),
+    "exang": ("during an exercise stress test",
+              "Whether you had chest pain (angina) during an exercise stress test."),
+    "oldpeak": ("from an exercise ECG; 0 means no change",
+                "How far the ST segment of the ECG tracing dropped during exercise compared "
+                "with rest, in millimetres. Larger drops are more concerning."),
+    "slope": ("from an exercise ECG",
+              "The shape of the ST segment of the ECG tracing at peak exercise. Upsloping is "
+              "usually the least concerning; flat and downsloping are more concerning."),
+    "ca": ("from cardiac fluoroscopy",
+           "The number of major heart vessels (0 to 3) highlighted on a fluoroscopy (X-ray "
+           "imaging) report. Most people haven't had this test; choose \"Don't know\" if so."),
+    "thal": ("from a nuclear (thallium) stress test",
+             "A scan of blood flow to the heart muscle at rest and during exercise. Fixed "
+             "defect: an area with low blood flow both at rest and during exercise, often from "
+             "old damage. Reversible defect: low blood flow only during exercise."),
+}
+assert set(CONTEXT) == set(FEATURES)
+
 
 def ask_numeric(question, lo, hi, integer):
     while True:
@@ -106,15 +149,18 @@ def interview():
     return answers
 
 
+def risk_band(proba):
+    if proba < 0.3:
+        return "lower"
+    if proba < 0.6:
+        return "moderate"
+    return "higher"
+
+
 def report(model, answers):
     proba = model.predict_proba(pd.DataFrame([answers]))[0, 1]
     skipped = [f for f, v in answers.items() if isinstance(v, float) and math.isnan(v)]
-    if proba < 0.3:
-        band = "lower"
-    elif proba < 0.6:
-        band = "moderate"
-    else:
-        band = "higher"
+    band = risk_band(proba)
 
     print("-" * 66)
     print(f"  Estimated probability of heart disease: {proba:.0%}  ({band} estimated risk)")
